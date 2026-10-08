@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://vicdoce2020-creator.github.io/vic-portfolio/sitemap.xml
