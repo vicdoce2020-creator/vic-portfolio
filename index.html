@@ -160,5 +160,170 @@
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="script.js"></script>
+
+  
+<!-- Voice chatbot -->
+<div id="voice-chatbot" style="
+  position:fixed;right:20px;bottom:20px;width:320px;max-width:calc(100vw - 40px);
+  background:#fff;color:#222;border:1px solid #ddd;border-radius:16px;
+  box-shadow:0 8px 30px #0002;z-index:99999;font-family:Arial,sans-serif;overflow:hidden;">
+  <div style="background:#173b67;color:white;padding:15px;font-weight:bold">
+    Voice Assistant
+    <span style="float:right;font-weight:normal;font-size:12px">English</span>
+  </div>
+
+  <div id="voice-messages" aria-live="polite"
+       style="height:210px;overflow:auto;padding:12px;font-size:14px">
+    <p><b>Assistant:</b> Hello! Press the microphone and ask me a question.</p>
+  </div>
+
+  <div style="padding:12px;border-top:1px solid #eee">
+    <label for="voice-input" style="font-size:12px">Your message</label>
+    <input id="voice-input" type="text" placeholder="Speak or type here..."
+      style="box-sizing:border-box;width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:8px">
+
+    <div style="display:flex;gap:8px">
+      <button id="voice-mic" type="button"
+        style="flex:1;padding:11px;background:#173b67;color:white;border:0;border-radius:8px;cursor:pointer">
+        🎙 Speak
+      </button>
+      <button id="voice-send" type="button"
+        style="flex:1;padding:11px;background:#16805d;color:white;border:0;border-radius:8px;cursor:pointer">
+        Send
+      </button>
+    </div>
+    <p id="voice-status" style="font-size:12px;color:#666;margin-bottom:0">
+      Ready
+    </p>
+  </div>
+</div>
+
+<script>
+(() => {
+  // Replace this with your verified PRODUCTION webhook URL.
+  const WEBHOOK_URL =
+    "https://n8n-vic.onrender.com/webhook/website-leads";
+
+  const messages = document.getElementById("voice-messages");
+  const input = document.getElementById("voice-input");
+  const status = document.getElementById("voice-status");
+  const mic = document.getElementById("voice-mic");
+  const send = document.getElementById("voice-send");
+
+  function addMessage(who, text) {
+    const p = document.createElement("p");
+    const label = document.createElement("b");
+    label.textContent = who + ": ";
+    p.appendChild(label);
+    p.appendChild(document.createTextNode(text));
+    messages.appendChild(p);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function speak(text) {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    window.speechSynthesis.speak(utterance);
+  }
+
+  async function submitMessage() {
+    const text = input.value.trim();
+    if (!text) {
+      status.textContent = "Please speak or type a message first.";
+      return;
+    }
+
+    addMessage("You", text);
+    input.value = "";
+    status.textContent = "Sending your message...";
+
+    try {
+      const response = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          source: "GitHub HTML Voice Chatbot",
+          page: window.location.href,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Webhook returned HTTP " + response.status);
+      }
+
+      const data = await response.json();
+
+      // Configure your n8n Respond to Webhook node to return
+      // a JSON response with a "reply" field.
+      const reply = data.reply ||
+                   data.response ||
+                   data.message ||
+                   "Thanks! Your message was sent successfully.";
+
+      addMessage("Assistant", reply);
+      speak(reply);
+      status.textContent = "Done";
+    } catch (error) {
+      console.error(error);
+      status.textContent =
+        "Could not reach the chatbot. Check the webhook and response settings.";
+      addMessage("Assistant",
+        "Sorry, I couldn't connect just now. Please try again or contact us.");
+    }
+  }
+
+  send.addEventListener("click", submitMessage);
+
+  input.addEventListener("keydown", event => {
+    if (event.key === "Enter") submitMessage();
+  });
+
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    mic.disabled = true;
+    mic.textContent = "Voice unavailable";
+    status.textContent =
+      "Speech recognition is not supported in this browser. You can still type.";
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  mic.addEventListener("click", () => {
+    try {
+      status.textContent = "Listening... Speak now.";
+      recognition.start();
+    } catch (error) {
+      status.textContent = "Microphone is busy. Please try again.";
+    }
+  });
+
+  recognition.onresult = event => {
+    input.value = event.results[0][0].transcript;
+    status.textContent = "Speech captured. Sending...";
+    submitMessage();
+  };
+
+  recognition.onerror = event => {
+    status.textContent = "Microphone error: " + event.error;
+  };
+
+  recognition.onend = () => {
+    if (status.textContent === "Listening... Speak now.") {
+      status.textContent = "Ready";
+    }
+  };
+})();
+</script>
+
 </body>
 </html>
