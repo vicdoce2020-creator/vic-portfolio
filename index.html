@@ -255,7 +255,41 @@
         throw new Error("Webhook returned HTTP " + response.status);
       }
 
-      const data = await response.json();
+      
+const responseText = await response.text();
+
+let data = {};
+
+if (responseText.trim()) {
+  try {
+    data = JSON.parse(responseText);
+  } catch (error) {
+    console.error("Invalid JSON from n8n:", responseText);
+    throw new Error("n8n returned invalid JSON.");
+  }
+}
+
+const reply =
+  data.reply ||
+  data.response ||
+  data.message ||
+  "Your message was received, but no reply was returned by the server.";
+
+addMessage("Assistant", reply);
+speak(reply);
+status.textContent = "Done";
+```
+
+This prevents the JSON parsing exception and gives you a clearer error if n8n returns an empty response. It doesn't replace the need to fix the response node.
+
+## Step 3 — Test the workflow
+
+1. Save and commit `index.html` on GitHub.
+2. In n8n, click **Listen for Test Event**.
+3. Send a message through your chatbot.
+4. Open Chrome DevTools → **Network** → click `website-leads` → **Response**.
+
+**Tell me what appears in the Response tab:** is it completely blank, or does it contain JSON? That will tell us whether the remaining issue is in n8n's response configuration or the website code.
 
       // Configure your n8n Respond to Webhook node to return
       // a JSON response with a "reply" field.
