@@ -265,18 +265,19 @@
     status.textContent = "Sending your message...";
 
     try {
-      const response = await fetch(WEBHOOK_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          message: text,
-          source: "GitHub HTML Voice Chatbot",
-          page: window.location.href,
-          timestamp: new Date().toISOString()
-        })
-      });
+  const response = await fetch(WEBHOOK_URL, {
+    method: "POST",
+    body: new URLSearchParams({
+      message: text,
+      source: "GitHub HTML Voice Chatbot",
+      page: window.location.href,
+      timestamp: new Date().toISOString()
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Webhook request failed: ${response.status}`);
+  }
 
       // Read the response body once, even if it is empty.
       const responseText = await response.text();
