@@ -279,7 +279,75 @@
   }
 
   function wantsInquiry(text) {
-    return /\b(make an inquiry|make a[n ]? enquiry|submit an inquiry|submit an enquiry|send an inquiry|send an enquiry|request a quote|request a quotation|contact me|contact you|contact your team|hire you|hire your team|interested in your services|start an inquiry|start an enquiry|make an appointment)\b/i.test(text);
+    return /\b(make an inquiry|make a[n ]? enquiry|submit an inquiry|submit an enquiry|send an inquiry|send an enquiry|request a quote|request a quotation|contact me|contact you|contact your team|hire you|hire your team|interested in your services|start an inquiry|start an enquiry|make an appointment|website for my business|need seo services|seo services|discuss a project)\b/i.test(text);
+  }
+
+  function serviceFromQuickQuestion(text) {
+    const value = text.toLowerCase();
+    if (value.includes("website for my business")) {
+      return "Website development";
+    }
+    if (value.includes("seo services")) {
+      return "SEO services";
+    }
+    if (value.includes("discuss a project")) {
+      return "Project consultation";
+    }
+    return "";
+  }
+
+  // Add suggested questions without requiring changes to the page HTML.
+  function addSuggestedQuestions() {
+    const suggestions = [
+      { label: "I want to make an inquiry", message: "I want to make an inquiry" },
+      { label: "I want a website for my business", message: "I want a website for my business" },
+      { label: "I need SEO services", message: "I need SEO services" },
+      { label: "I want to discuss a project", message: "I want to discuss a project" }
+    ];
+
+    const panel = document.createElement("div");
+    panel.id = "voice-suggested-questions";
+    panel.setAttribute("aria-label", "Suggested questions");
+    panel.style.display = "flex";
+    panel.style.flexWrap = "wrap";
+    panel.style.gap = "8px";
+    panel.style.margin = "10px 0";
+    panel.style.width = "100%";
+
+    const heading = document.createElement("div");
+    heading.textContent = "Quick questions:";
+    heading.style.width = "100%";
+    heading.style.fontSize = "14px";
+    heading.style.marginBottom = "2px";
+    panel.appendChild(heading);
+
+    suggestions.forEach(item => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = item.label;
+      button.style.padding = "8px 12px";
+      button.style.border = "1px solid #cbd5e1";
+      button.style.borderRadius = "16px";
+      button.style.background = "#ffffff";
+      button.style.color = "#1f2937";
+      button.style.cursor = "pointer";
+      button.style.fontSize = "13px";
+      button.style.lineHeight = "1.35";
+      button.addEventListener("click", () => {
+        if (send.disabled || leadState) return;
+        input.value = item.message;
+        submitMessage();
+      });
+      panel.appendChild(button);
+    });
+
+    // Place the suggestions above the input controls.
+    const inputContainer = input.parentElement;
+    if (inputContainer && inputContainer.parentElement) {
+      inputContainer.parentElement.insertBefore(panel, inputContainer);
+    } else if (messages.parentElement) {
+      messages.parentElement.insertBefore(panel, messages.nextSibling);
+    }
   }
 
   async function submitLead() {
@@ -392,11 +460,21 @@
           }
 
           lead.email = email;
-          leadState = "service";
-          assistantReply(
-            "Which service are you interested in? For example, " +
-            "SEO, website development, or AI and workflow automation."
-          );
+
+          if (lead.service) {
+            leadState = "message";
+            assistantReply(
+              "Thanks. I have noted " + lead.service +
+              " as the service you're interested in. " +
+              "Please describe what you need help with."
+            );
+          } else {
+            leadState = "service";
+            assistantReply(
+              "Which service are you interested in? For example, " +
+              "SEO, website development, or AI and workflow automation."
+            );
+          }
           return;
         }
 
@@ -456,7 +534,7 @@
         lead = {
           name: "",
           email: "",
-          service: "",
+          service: serviceFromQuickQuestion(text),
           message: ""
         };
 
@@ -529,6 +607,8 @@
       mic.disabled = false;
     }
   }
+
+  addSuggestedQuestions();
 
   send.addEventListener("click", submitMessage);
 
