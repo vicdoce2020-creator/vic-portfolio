@@ -198,8 +198,7 @@
   </div>
 </div>
 
-  
-<script>
+  <script>
 (() => {
   "use strict";
 
@@ -296,6 +295,22 @@
     return "";
   }
 
+  // Hide the suggested-question panel after a visitor chooses or types a default question.
+  function hideSuggestedQuestions() {
+    const panel = document.getElementById("voice-suggested-questions");
+    if (panel) panel.remove();
+  }
+
+  function isSuggestedQuestion(text) {
+    const normalized = text.toLowerCase().trim().replace(/[.!?]+$/, "");
+    return [
+      "i want to make an inquiry",
+      "i want a website for my business",
+      "i need seo services",
+      "i want to discuss a project"
+    ].includes(normalized);
+  }
+
   // Add suggested questions without requiring changes to the page HTML.
   function addSuggestedQuestions() {
     const suggestions = [
@@ -335,6 +350,7 @@
       button.style.lineHeight = "1.35";
       button.addEventListener("click", () => {
         if (send.disabled || leadState) return;
+        hideSuggestedQuestions();
         input.value = item.message;
         submitMessage();
       });
@@ -402,6 +418,11 @@
     const text = input.value.trim();
 
     if (!text || send.disabled) return;
+
+    // Remove the quick-question panel if the visitor typed one of its options.
+    if (isSuggestedQuestion(text)) {
+      hideSuggestedQuestions();
+    }
 
     addMessage("You", text);
     input.value = "";
@@ -666,7 +687,6 @@
   };
 })();
 </script>
-
 
 </body>
 </html>
