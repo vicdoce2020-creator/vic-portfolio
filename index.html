@@ -275,13 +275,16 @@
         );
       }
 
-      if (!response.ok) {
-        throw new Error(
-          data.error?.message ||
-          data.error ||
-          "AI request failed (HTTP " + response.status + ")."
-        );
-      }
+      
+        if (!response.ok) {
+          throw new Error(
+            data.details ||
+            data.error?.message ||
+            data.error ||
+            "AI request failed (HTTP " + response.status + ")."
+          );
+        }
+
 
       if (!data.reply || typeof data.reply !== "string") {
         throw new Error("The AI server did not return a reply.");
