@@ -197,16 +197,12 @@
     </p>
   </div>
 </div>
-
-
-
 <script>
 (() => {
   "use strict";
 
-  // Your current Zapier Catch Hook URL.
-  const WEBHOOK_URL =
-    "https://hooks.zapier.com/hooks/catch/29154510/41s7fki/";
+  const AI_URL =
+    "https://weathered-poetry-6690.vicdoce2020.workers.dev/";
 
   const messages = document.getElementById("voice-messages");
   const input = document.getElementById("voice-input");
@@ -215,9 +211,13 @@
   const send = document.getElementById("voice-send");
 
   if (!messages || !input || !status || !mic || !send) {
-    console.error("Chatbot elements are missing from index.html.");
+    console.error("Chatbot elements are missing.");
     return;
   }
+
+  // Keep recent conversation messages for continuity.
+  const conversation = [];
+  const MAX_HISTORY = 12;
 
   function addMessage(who, text) {
     const p = document.createElement("p");
@@ -244,63 +244,76 @@
   async function submitMessage() {
     const text = input.value.trim();
 
-    if (!text) {
-      status.textContent = "Please speak or type a message first.";
-      return;
-    }
-
-    if (send.disabled) return;
+    if (!text || send.disabled) return;
 
     addMessage("You", text);
     input.value = "";
+
     send.disabled = true;
     mic.disabled = true;
-    status.textContent = "Sending your message...";
+    status.textContent = "Thinking...";
 
     try {
-      const payload = new URLSearchParams({
-        message: text,
-        source: "GitHub HTML Voice Chatbot",
-        page: window.location.href,
-        timestamp: new Date().toISOString()
-      });
-
-      const response = await fetch(WEBHOOK_URL, {
+      const response = await fetch(AI_URL, {
         method: "POST",
-        body: payload
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: text
+        })
       });
 
       const responseText = await response.text();
 
-      if (!response.ok) {
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
         throw new Error(
-          "Zapier returned HTTP " +
-          response.status +
-          ": " + responseText
+          "The AI server returned an invalid response."
         );
       }
 
-      console.log("Zapier webhook accepted the request.");
+      if (!response.ok) {
+        throw new Error(
+          data.error?.message ||
+          data.error ||
+          "AI request failed (HTTP " + response.status + ")."
+        );
+      }
 
-      // A successful Catch Hook does not guarantee an AI reply.
-      const reply =
-        "Thank you! Your message has been received. How else can I help you?";
+      if (!data.reply || typeof data.reply !== "string") {
+        throw new Error("The AI server did not return a reply.");
+      }
+
+      const reply = data.reply.trim();
+
+      // Store conversation locally for the next implementation step.
+      conversation.push(
+        { role: "user", text: text },
+        { role: "assistant", text: reply }
+      );
+
+      if (conversation.length > MAX_HISTORY) {
+        conversation.splice(
+          0,
+          conversation.length - MAX_HISTORY
+        );
+      }
 
       addMessage("Assistant", reply);
       speak(reply);
-      status.textContent = "Message sent successfully.";
+      status.textContent = "Ready";
 
     } catch (error) {
-      console.error("Zapier webhook error:", error);
-
-      status.textContent =
-        "Could not send your message. Please check the Console.";
+      console.error("AI chatbot error:", error);
+      status.textContent = "Could not get an AI reply.";
 
       addMessage(
         "Assistant",
-        "Sorry, I couldn't send your message just now. Please try again."
+        "Sorry, I couldn't get a response just now. Please try again."
       );
-
     } finally {
       send.disabled = false;
       mic.disabled = false;
@@ -329,7 +342,6 @@
   }
 
   const recognition = new SpeechRecognition();
-
   recognition.lang = "en-US";
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
@@ -341,7 +353,7 @@
       status.textContent = "Listening... Speak now.";
       recognition.start();
     } catch (error) {
-      console.error("Speech recognition could not start:", error);
+      console.error("Speech recognition error:", error);
       status.textContent = "Microphone is busy. Please try again.";
     }
   });
