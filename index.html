@@ -674,37 +674,34 @@
     }
   });
 
-  recognition.onresult = event => {
-    // Combine all speech-recognition results instead of using only the first one.
-    const transcript = Array.from(event.results)
-      .map(result => result[0] && result[0].transcript ? result[0].transcript : "")
-      .filter(part => part.trim())
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
+  let voiceTranscriptReady = false;
 
-    if (!transcript) {
-      status.textContent = "No speech detected. Please try again.";
-      return;
-    }
+recognition.onresult = event => {
+  const transcript = Array.from(event.results)
+    .map(result => result[0].transcript)
+    .join(" ")
+    .trim();
 
-    hideSuggestedQuestions();
-    input.value = transcript;
-    status.textContent = "Speech captured.";
+  if (!transcript) return;
+
+  input.value = transcript;
+  hideSuggestedQuestions();
+
+  voiceTranscriptReady = true;
+  status.textContent = "Speech captured.";
+};
+
+recognition.onend = () => {
+  if (voiceTranscriptReady) {
+    voiceTranscriptReady = false;
     submitMessage();
-  };
+    return;
+  }
 
-
-  recognition.onerror = event => {
-    console.error("Speech recognition error:", event.error);
-    status.textContent = "Microphone error: " + event.error;
-  };
-
-  recognition.onend = () => {
-    if (status.textContent === "Listening... Speak now.") {
-      status.textContent = "Ready";
-    }
-  };
+  if (status.textContent === "Listening... Speak now.") {
+    status.textContent = "Ready";
+  }
+};
 })();
 </script>
 
