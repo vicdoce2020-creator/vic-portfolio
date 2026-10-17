@@ -419,10 +419,8 @@
 
     if (!text || send.disabled) return;
 
-    // Remove the quick-question panel if the visitor typed one of its options.
-    if (isSuggestedQuestion(text)) {
-      hideSuggestedQuestions();
-    }
+    // Remove quick questions whenever the visitor submits a message.
+    hideSuggestedQuestions();
 
     addMessage("You", text);
     input.value = "";
@@ -633,6 +631,13 @@
 
   send.addEventListener("click", submitMessage);
 
+  // Hide quick questions as soon as the visitor starts typing.
+  input.addEventListener("input", () => {
+    if (input.value.trim()) {
+      hideSuggestedQuestions();
+    }
+  });
+
   input.addEventListener("keydown", event => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -669,10 +674,22 @@
     }
   });
 
-  
-recognition.onresult = event => {
-    input.value = event.results[0][0].transcript;
+  recognition.onresult = event => {
+    // Combine all speech-recognition results instead of using only the first one.
+    const transcript = Array.from(event.results)
+      .map(result => result[0] && result[0].transcript ? result[0].transcript : "")
+      .filter(part => part.trim())
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!transcript) {
+      status.textContent = "No speech detected. Please try again.";
+      return;
+    }
+
     hideSuggestedQuestions();
+    input.value = transcript;
     status.textContent = "Speech captured.";
     submitMessage();
   };
