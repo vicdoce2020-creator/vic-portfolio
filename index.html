@@ -197,1061 +197,462 @@
     </p>
   </div>
 </div>
-
 <script>
-
 (() => {
-
   "use strict";
 
- 
-
-  const AI_URL =
-
-    "https://weathered-poetry-6690.vicdoce2020.workers.dev/";
-
- 
-
-  const LEAD_URL =
-
-    "https://weathered-poetry-6690.vicdoce2020.workers.dev/lead";
-
- 
+  const AI_URL = "https://weathered-poetry-6690.vicdoce2020.workers.dev/";
+  const LEAD_URL = "https://weathered-poetry-6690.vicdoce2020.workers.dev/lead";
 
   const messages = document.getElementById("voice-messages");
-
   const input = document.getElementById("voice-input");
-
   const status = document.getElementById("voice-status");
-
   const mic = document.getElementById("voice-mic");
-
   const send = document.getElementById("voice-send");
 
- 
-
   if (!messages || !input || !status || !mic || !send) {
-
     console.error("Chatbot elements are missing.");
-
     return;
-
   }
-
- 
 
   const conversation = [];
-
   const MAX_HISTORY = 12;
 
- 
-
   // Lead details are kept locally until the visitor confirms.
-
   let leadState = null;
-
   let isRecognizing = false;
-
   let lead = {
-
     name: "",
-
     email: "",
-
     service: "",
-
     message: ""
-
   };
 
- 
-
   function addMessage(who, text) {
-
     const p = document.createElement("p");
-
     const label = document.createElement("b");
-
- 
-
     label.textContent = who + ": ";
-
     p.appendChild(label);
-
     p.appendChild(document.createTextNode(String(text)));
-
- 
-
     messages.appendChild(p);
-
     messages.scrollTop = messages.scrollHeight;
-
   }
-
- 
 
   function speak(text) {
-
     if (!("speechSynthesis" in window)) return;
-
- 
-
     window.speechSynthesis.cancel();
-
- 
-
     const utterance = new SpeechSynthesisUtterance(String(text));
-
     utterance.lang = "en-US";
-
     window.speechSynthesis.speak(utterance);
-
   }
-
- 
 
   function assistantReply(text) {
-
     addMessage("Assistant", text);
-
     speak(text);
-
     status.textContent = "Ready";
-
   }
-
- 
 
   function resetLead() {
-
     leadState = null;
-
     lead = {
-
       name: "",
-
       email: "",
-
       service: "",
-
       message: ""
-
     };
-
   }
-
- 
 
   function isYes(text) {
-
     return /^(yes|yes please|confirm|confirmed|submit|submit it|send it|send|correct|that's correct|that is correct|go ahead|proceed)[.! ]*$/i.test(text.trim());
-
   }
-
- 
 
   function isNo(text) {
-
     return /^(no|no thanks|cancel|cancel it|don't submit|do not submit|not yet)[.! ]*$/i.test(text.trim());
-
   }
-
- 
 
   function wantsInquiry(text) {
-
     return /\b(make an inquiry|make a[n ]? enquiry|submit an inquiry|submit an enquiry|send an inquiry|send an enquiry|request a quote|request a quotation|contact me|contact you|contact your team|hire you|hire your team|interested in your services|start an inquiry|start an enquiry|make an appointment|website for my business|need seo services|seo services|discuss a project)\b/i.test(text);
-
   }
-
- 
 
   function serviceFromQuickQuestion(text) {
-
     const value = text.toLowerCase();
-
     if (value.includes("website for my business")) {
-
       return "Website development";
-
     }
-
     if (value.includes("seo services")) {
-
       return "SEO services";
-
     }
-
     if (value.includes("discuss a project")) {
-
       return "Project consultation";
-
     }
-
     return "";
-
   }
-
- 
-
-  // Hide the suggested-question panel after a visitor chooses or types a default question.
 
   function hideSuggestedQuestions() {
-
     const panel = document.getElementById("voice-suggested-questions");
-
     if (panel) panel.remove();
-
   }
-
- 
 
   function isSuggestedQuestion(text) {
-
     const normalized = text.toLowerCase().trim().replace(/[.!?]+$/, "");
-
     return [
-
       "i want to make an inquiry",
-
       "i want a website for my business",
-
       "i need seo services",
-
       "i want to discuss a project"
-
     ].includes(normalized);
-
   }
-
- 
-
-  // Add suggested questions without requiring changes to the page HTML.
 
   function addSuggestedQuestions() {
-
     const suggestions = [
-
       { label: "I want to make an inquiry", message: "I want to make an inquiry" },
-
       { label: "I want a website for my business", message: "I want a website for my business" },
-
       { label: "I need SEO services", message: "I need SEO services" },
-
       { label: "I want to discuss a project", message: "I want to discuss a project" }
-
     ];
 
- 
-
     const panel = document.createElement("div");
-
     panel.id = "voice-suggested-questions";
-
     panel.setAttribute("aria-label", "Suggested questions");
-
     panel.style.display = "flex";
-
     panel.style.flexWrap = "wrap";
-
     panel.style.gap = "8px";
-
     panel.style.margin = "10px 0";
-
     panel.style.width = "100%";
 
- 
-
     const heading = document.createElement("div");
-
     heading.textContent = "Quick questions:";
-
     heading.style.width = "100%";
-
     heading.style.fontSize = "14px";
-
     heading.style.marginBottom = "2px";
-
     panel.appendChild(heading);
 
- 
-
     suggestions.forEach(item => {
-
       const button = document.createElement("button");
-
       button.type = "button";
-
       button.textContent = item.label;
-
       button.style.padding = "8px 12px";
-
       button.style.border = "1px solid #cbd5e1";
-
       button.style.borderRadius = "16px";
-
       button.style.background = "#ffffff";
-
       button.style.color = "#1f2937";
-
       button.style.cursor = "pointer";
-
       button.style.fontSize = "13px";
-
       button.style.lineHeight = "1.35";
-
       button.addEventListener("click", () => {
-
         if (send.disabled || leadState) return;
-
         hideSuggestedQuestions();
-
         input.value = item.message;
-
         submitMessage();
-
       });
-
       panel.appendChild(button);
-
     });
 
- 
-
-    // Place the suggestions above the input controls.
-
     const inputContainer = input.parentElement;
-
     if (inputContainer && inputContainer.parentElement) {
-
       inputContainer.parentElement.insertBefore(panel, inputContainer);
-
     } else if (messages.parentElement) {
-
       messages.parentElement.insertBefore(panel, messages.nextSibling);
-
     }
-
   }
 
- 
-
   async function submitLead() {
-
     status.textContent = "Submitting your inquiry...";
-
     send.disabled = true;
-
     mic.disabled = true;
 
- 
-
     try {
-
       const response = await fetch(LEAD_URL, {
-
         method: "POST",
-
-        headers: {
-
-          "Content-Type": "application/json"
-
-        },
-
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-
           name: lead.name,
-
           email: lead.email,
-
           service: lead.service,
-
           message: lead.message
-
         })
-
       });
-
- 
 
       const result = await response.json();
 
- 
-
       if (!response.ok || result.success !== true) {
-
-        throw new Error(
-
-          result.error || "Lead submission failed."
-
-        );
-
+        throw new Error(result.error || "Lead submission failed.");
       }
-
- 
 
       resetLead();
 
- 
-
       assistantReply(
-
-        "Thank you! Your inquiry has been submitted successfully. " +
-
-        "We have received your details and will follow up with you."
-
+        "Thank you! Your inquiry has been submitted successfully. We have received your details and will follow up with you."
       );
-
     } catch (error) {
-
       console.error("Lead submission error:", error);
-
       status.textContent = "Submission failed.";
 
- 
-
       assistantReply(
-
-        "Sorry, I couldn't submit your inquiry just now. " +
-
-        "Your details have not been confirmed as submitted. " +
-
-        "Please try again later."
-
+        "Sorry, I couldn't submit your inquiry just now. Your details have not been confirmed as submitted. Please try again later."
       );
-
     } finally {
-
       send.disabled = false;
-
       mic.disabled = false;
-
     }
-
   }
 
- 
-
   async function submitMessage() {
-
     const text = input.value.trim();
-
- 
 
     if (!text || send.disabled || isRecognizing) return;
 
- 
-
-    // Remove the quick-question panel if the visitor typed one of its options.
-
     if (isSuggestedQuestion(text)) {
-
       hideSuggestedQuestions();
-
     }
 
- 
-
     addMessage("You", text);
-
     input.value = "";
 
- 
-
     send.disabled = true;
-
     mic.disabled = true;
-
     status.textContent = "Thinking...";
 
- 
-
     try {
-
       const lower = text.toLowerCase().trim();
 
- 
-
-      // Allow the visitor to cancel at any point before submission.
-
-      if (
-
-        leadState &&
-
-        /^(cancel|cancel inquiry|cancel my inquiry|stop|start over)[.! ]*$/i.test(text)
-
-      ) {
-
+      if (leadState && /^(cancel|cancel inquiry|cancel my inquiry|stop|start over)[.! ]*$/i.test(text)) {
         resetLead();
-
         assistantReply(
-
-          "No problem. Your inquiry was cancelled and nothing was sent. " +
-
-          "You can continue asking me questions."
-
+          "No problem. Your inquiry was cancelled and nothing was sent. You can continue asking me questions."
         );
-
         return;
-
       }
-
- 
-
-      // Handle the lead collection conversation.
 
       if (leadState) {
-
         if (leadState === "name") {
-
           if (text.length < 2 || text.length > 120) {
-
-            assistantReply(
-
-              "Please enter your name using between 2 and 120 characters."
-
-            );
-
+            assistantReply("Please enter your name using between 2 and 120 characters.");
             return;
-
           }
-
- 
-
           lead.name = text;
-
           leadState = "email";
-
           assistantReply(
-
-            "Thank you, " + lead.name +
-
-            ". What is the best email address to reach you?"
-
+            "Thank you, " + lead.name + ". What is the best email address to reach you?"
           );
-
           return;
-
         }
-
- 
 
         if (leadState === "email") {
-
           const email = text.trim();
-
- 
-
-          if (
-
-            email.length > 254 ||
-
-            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-
-          ) {
-
+          if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             assistantReply(
-
-              "That doesn't look like a valid email address. " +
-
-              "Please enter it again, or type cancel to stop."
-
+              "That doesn't look like a valid email address. Please enter it again, or type cancel to stop."
             );
-
             return;
-
           }
-
- 
-
           lead.email = email;
-
- 
-
           if (lead.service) {
-
             leadState = "message";
-
             assistantReply(
-
-              "Thanks. I have noted " + lead.service +
-
-              " as the service you're interested in. " +
-
-              "Please describe what you need help with."
-
+              "Thanks. I have noted " + lead.service + " as the service you're interested in. Please describe what you need help with."
             );
-
           } else {
-
             leadState = "service";
-
             assistantReply(
-
-              "Which service are you interested in? For example, " +
-
-              "SEO, website development, or AI and workflow automation."
-
+              "Which service are you interested in? For example, SEO, website development, or AI and workflow automation."
             );
-
           }
-
           return;
-
         }
-
- 
 
         if (leadState === "service") {
-
           lead.service = text;
-
           leadState = "message";
-
           assistantReply(
-
-            "Please describe what you need help with. " +
-
-            "What is your main concern or project requirement?"
-
+            "Please describe what you need help with. What is your main concern or project requirement?"
           );
-
           return;
-
         }
-
- 
 
         if (leadState === "message") {
-
           lead.message = text;
-
           leadState = "confirm";
-
- 
-
           assistantReply(
-
             "Please review your inquiry:\n" +
-
             "Name: " + lead.name + "\n" +
-
             "Email: " + lead.email + "\n" +
-
             "Service: " + lead.service + "\n" +
-
             "Concern: " + lead.message + "\n\n" +
-
-            "Would you like me to submit these details? " +
-
-            "Please say or type Yes to submit, or No to cancel. " +
-
-            "Nothing will be sent until you confirm."
-
+            "Would you like me to submit these details? Please say or type Yes to submit, or No to cancel. Nothing will be sent until you confirm."
           );
-
           return;
-
         }
-
- 
 
         if (leadState === "confirm") {
-
           if (isYes(text)) {
-
             await submitLead();
-
             return;
-
           }
-
- 
-
           if (isNo(text)) {
-
             resetLead();
-
             assistantReply(
-
-              "No problem. Your inquiry was not submitted. " +
-
-              "You can continue chatting with me."
-
+              "No problem. Your inquiry was not submitted. You can continue chatting with me."
             );
-
             return;
-
           }
-
- 
-
           assistantReply(
-
-            "Would you like me to submit the details shown above? " +
-
-            "Please say or type Yes to submit, No to cancel, " +
-
-            "or Cancel to stop the inquiry."
-
+            "Would you like me to submit the details shown above? Please say or type Yes to submit, No to cancel, or Cancel to stop the inquiry."
           );
-
           return;
-
         }
-
       }
-
- 
-
-      // Start lead collection only when the visitor requests an inquiry.
 
       if (wantsInquiry(text)) {
-
         lead = {
-
           name: "",
-
           email: "",
-
           service: serviceFromQuickQuestion(text),
-
           message: ""
-
         };
-
- 
-
         leadState = "name";
-
- 
-
         assistantReply(
-
-          "I'd be happy to help with your inquiry. " +
-
-          "Before we submit anything, I'll collect your details " +
-
-          "and ask you to confirm them. What is your name?"
-
+          "I'd be happy to help with your inquiry. Before we submit anything, I'll collect your details and ask you to confirm them. What is your name?"
         );
-
         return;
-
       }
-
- 
-
-      // Normal AI conversation.
 
       const history = conversation.slice(-MAX_HISTORY).map(item => ({
-
         role: item.role === "assistant" ? "model" : "user",
-
         content: item.text
-
       }));
 
- 
-
       const response = await fetch(AI_URL, {
-
         method: "POST",
-
-        headers: {
-
-          "Content-Type": "application/json"
-
-        },
-
-        body: JSON.stringify({
-
-          message: text,
-
-          history
-
-        })
-
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, history })
       });
 
- 
-
       const responseText = await response.text();
-
       let data;
-
- 
-
       try {
-
         data = JSON.parse(responseText);
-
       } catch {
-
         throw new Error("The AI server returned an invalid response.");
-
       }
-
- 
 
       if (!response.ok || !data.reply || typeof data.reply !== "string") {
-
         throw new Error(
-
-          data.details
-
-            ? JSON.stringify(data.details)
-
-            : JSON.stringify(data.error || data)
-
+          data.details ? JSON.stringify(data.details) : JSON.stringify(data.error || data)
         );
-
       }
-
- 
 
       const reply = data.reply.trim();
 
- 
-
       conversation.push(
-
         { role: "user", text },
-
         { role: "assistant", text: reply }
-
       );
 
- 
-
       if (conversation.length > MAX_HISTORY) {
-
         conversation.splice(0, conversation.length - MAX_HISTORY);
-
       }
-
- 
 
       assistantReply(reply);
 
- 
-
     } catch (error) {
-
       console.error("Chatbot error:", error);
-
       status.textContent = "Could not complete the request.";
-
- 
-
-      assistantReply(
-
-        "Sorry, something went wrong. Please try again."
-
-      );
-
+      assistantReply("Sorry, something went wrong. Please try again.");
     } finally {
-
       send.disabled = false;
-
       mic.disabled = false;
-
     }
-
   }
-
- 
 
   addSuggestedQuestions();
 
- 
-
   send.addEventListener("click", submitMessage);
 
- 
-
   input.addEventListener("input", () => {
-
     if (input.value.trim()) {
-
       hideSuggestedQuestions();
-
     }
-
   });
-
- 
 
   input.addEventListener("keydown", event => {
-
     if (event.key === "Enter") {
-
       event.preventDefault();
-
       submitMessage();
-
     }
-
   });
 
- 
-
-  const SpeechRecognition =
-
-    window.SpeechRecognition ||
-
-    window.webkitSpeechRecognition;
-
- 
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-
     mic.disabled = true;
-
     mic.textContent = "Voice unavailable";
-
-    status.textContent =
-
-      "Speech recognition is unsupported here. You can still type.";
-
+    status.textContent = "Speech recognition is unsupported here. You can still type.";
     return;
-
   }
 
- 
-
   const recognition = new SpeechRecognition();
-
   recognition.lang = "en-US";
-
   recognition.continuous = true;
-
   recognition.interimResults = true;
-
   recognition.maxAlternatives = 1;
 
- 
-
   let transcriptBeforeRecording = "";
-  let speechRecognitionError = "";
-
- 
 
   mic.addEventListener("click", () => {
-
     if (send.disabled || isRecognizing) return;
-
- 
-
     try {
-
       transcriptBeforeRecording = input.value.trim();
-      speechRecognitionError = "";
-
       hideSuggestedQuestions();
-
       isRecognizing = true;
-
       send.disabled = true;
-
       status.textContent = "Listening... Speak now. Your message will not send automatically.";
-
       recognition.start();
-
     } catch (error) {
-
       isRecognizing = false;
-
       send.disabled = false;
-
       console.error("Speech recognition error:", error);
-
       status.textContent = "Microphone is busy. Please try again.";
-
     }
-
   });
 
- 
-
   recognition.onresult = event => {
-
-    // Rebuild the transcript from the browser's complete results each time.
-
-    // This avoids dropping earlier words or duplicating finalized segments.
-
     const recognizedPart = Array.from(event.results)
-
       .map(result => result[0] && result[0].transcript ? result[0].transcript : "")
-
       .join(" ")
-
       .replace(/\s+/g, " ")
-
       .trim();
 
     const transcript = [transcriptBeforeRecording, recognizedPart]
-      
-
       .filter(Boolean)
-
       .join(" ")
-
       .replace(/\s+/g, " ")
-
       .trim();
 
- 
-
     if (transcript) {
-
       input.value = transcript;
-
       hideSuggestedQuestions();
-
       status.textContent = "Listening... Speak naturally; press Send when finished.";
-
     }
-
   };
 
- 
-
- recognition.onerror = event => {
-  speechRecognitionError = event.error || "unknown";
-
-  console.error("Speech recognition error:", event.error);
-
-  if (event.error === "no-speech") {
-    status.textContent =
-      "No speech detected. Please check your microphone and try again.";
-  } else {
-    status.textContent =
-      "Microphone error: " + event.error +
-      ". Check microphone permission and try again.";
-  }
-};
+  recognition.onerror = event => {
+    console.error("Speech recognition error:", event.error);
+    if (event.error !== "no-speech" || !input.value.trim()) {
+      status.textContent = "Microphone error: " + event.error + ". You can try again or type your message.";
+    }
+  };
 
   recognition.onend = () => {
-  isRecognizing = false;
-  send.disabled = false;
-
-  if (input.value.trim()) {
-    status.textContent =
-      "Speech captured. Review the full text, then press Send.";
-  } else if (speechRecognitionError) {
-    status.textContent =
-      "Speech recognition stopped: " +
-      speechRecognitionError +
-      ". Check your microphone and try again.";
-  } else {
-    status.textContent =
-      "Ready — no speech transcript received. Try again.";
-  }
-};
-
+    isRecognizing = false;
+    send.disabled = false;
+    if (input.value.trim()) {
+      status.textContent = "Speech captured. Review the full text, then press Send. It has not been sent yet.";
+    } else {
+      status.textContent = "Ready";
+    }
+  };
 })();
-
 </script>
 
   
