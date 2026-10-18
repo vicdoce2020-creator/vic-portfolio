@@ -1133,6 +1133,7 @@
  
 
   let transcriptBeforeRecording = "";
+  let speechRecognitionError = "";
 
  
 
@@ -1145,6 +1146,7 @@
     try {
 
       transcriptBeforeRecording = input.value.trim();
+      speechRecognitionError = "";
 
       hideSuggestedQuestions();
 
@@ -1189,6 +1191,7 @@
       .trim();
 
     const transcript = [transcriptBeforeRecording, recognizedPart]
+      
 
       .filter(Boolean)
 
@@ -1214,39 +1217,38 @@
 
  
 
-  recognition.onerror = event => {
+ recognition.onerror = event => {
+  speechRecognitionError = event.error || "unknown";
 
-    console.error("Speech recognition error:", event.error);
+  console.error("Speech recognition error:", event.error);
 
-    if (event.error !== "no-speech" || !input.value.trim()) {
-
-      status.textContent = "Microphone error: " + event.error + ". You can try again or type your message.";
-
-    }
-
-  };
-
- 
+  if (event.error === "no-speech") {
+    status.textContent =
+      "No speech detected. Please check your microphone and try again.";
+  } else {
+    status.textContent =
+      "Microphone error: " + event.error +
+      ". Check microphone permission and try again.";
+  }
+};
 
   recognition.onend = () => {
+  isRecognizing = false;
+  send.disabled = false;
 
-    isRecognizing = false;
-
-    send.disabled = false;
-
- 
-
-    if (input.value.trim()) {
-
-      status.textContent = "Speech captured. Review the full text, then press Send. It has not been sent yet.";
-
-    } else {
-
-      status.textContent = "Ready";
-
-    }
-
-  };
+  if (input.value.trim()) {
+    status.textContent =
+      "Speech captured. Review the full text, then press Send.";
+  } else if (speechRecognitionError) {
+    status.textContent =
+      "Speech recognition stopped: " +
+      speechRecognitionError +
+      ". Check your microphone and try again.";
+  } else {
+    status.textContent =
+      "Ready — no speech transcript received. Try again.";
+  }
+};
 
 })();
 
