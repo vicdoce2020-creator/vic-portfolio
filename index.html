@@ -219,15 +219,9 @@
   const conversation = [];
   const MAX_HISTORY = 12;
 
-  // Lead details are kept locally until the visitor confirms.
   let leadState = null;
   let isRecognizing = false;
-  let lead = {
-    name: "",
-    email: "",
-    service: "",
-    message: ""
-  };
+  let lead = { name: "", email: "", service: "", message: "" };
 
   function addMessage(who, text) {
     const p = document.createElement("p");
@@ -255,12 +249,7 @@
 
   function resetLead() {
     leadState = null;
-    lead = {
-      name: "",
-      email: "",
-      service: "",
-      message: ""
-    };
+    lead = { name: "", email: "", service: "", message: "" };
   }
 
   function isYes(text) {
@@ -277,19 +266,12 @@
 
   function serviceFromQuickQuestion(text) {
     const value = text.toLowerCase();
-    if (value.includes("website for my business")) {
-      return "Website development";
-    }
-    if (value.includes("seo services")) {
-      return "SEO services";
-    }
-    if (value.includes("discuss a project")) {
-      return "Project consultation";
-    }
+    if (value.includes("website for my business")) return "Website development";
+    if (value.includes("seo services")) return "SEO services";
+    if (value.includes("discuss a project")) return "Project consultation";
     return "";
   }
 
-  // Hide the suggested-question panel after a visitor chooses or types a default question.
   function hideSuggestedQuestions() {
     const panel = document.getElementById("voice-suggested-questions");
     if (panel) panel.remove();
@@ -303,6 +285,58 @@
       "i need seo services",
       "i want to discuss a project"
     ].includes(normalized);
+  }
+
+  function addSuggestedQuestions() {
+    const suggestions = [
+      { label: "I want to make an inquiry", message: "I want to make an inquiry" },
+      { label: "I want a website for my business", message: "I want a website for my business" },
+      { label: "I need SEO services", message: "I need SEO services" },
+      { label: "I want to discuss a project", message: "I want to discuss a project" }
+    ];
+    const panel = document.createElement("div");
+    panel.id = "voice-suggested-questions";
+    panel.setAttribute("aria-label", "Suggested questions");
+    panel.style.display = "flex";
+    panel.style.flexWrap = "wrap";
+    panel.style.gap = "8px";
+    panel.style.margin = "10px 0";
+    panel.style.width = "100%";
+
+    const heading = document.createElement("div");
+    heading.textContent = "Quick questions:";
+    heading.style.width = "100%";
+    heading.style.fontSize = "14px";
+    heading.style.marginBottom = "2px";
+    panel.appendChild(heading);
+
+    suggestions.forEach(item => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = item.label;
+      button.style.padding = "8px 12px";
+      button.style.border = "1px solid #cbd5e1";
+      button.style.borderRadius = "16px";
+      button.style.background = "#ffffff";
+      button.style.color = "#1f2937";
+      button.style.cursor = "pointer";
+      button.style.fontSize = "13px";
+      button.style.lineHeight = "1.35";
+      button.addEventListener("click", () => {
+        if (send.disabled || leadState) return;
+        hideSuggestedQuestions();
+        input.value = item.message;
+        submitMessage();
+      });
+      panel.appendChild(button);
+    });
+
+    const inputContainer = input.parentElement;
+    if (inputContainer && inputContainer.parentElement) {
+      inputContainer.parentElement.insertBefore(panel, inputContainer);
+    } else if (messages.parentElement) {
+      messages.parentElement.insertBefore(panel, messages.nextSibling);
+    }
   }
 
   async function submitLead() {
@@ -348,7 +382,6 @@
     mic.disabled = true;
     status.textContent = "Thinking...";
     try {
-      const lower = text.toLowerCase().trim();
       if (leadState && /^(cancel|cancel inquiry|cancel my inquiry|stop|start over)[.! ]*$/i.test(text)) {
         resetLead();
         assistantReply("No problem. Your inquiry was cancelled and nothing was sent. You can continue asking me questions.");
@@ -410,23 +443,14 @@
             assistantReply("No problem. Your inquiry was not submitted. You can continue chatting with me.");
             return;
           }
-          assistantReply(
-            "Would you like me to submit the details shown above? Please say or type Yes to submit, No to cancel, or Cancel to stop the inquiry."
-          );
+          assistantReply("Would you like me to submit the details shown above? Please say or type Yes to submit, No to cancel, or Cancel to stop the inquiry.");
           return;
         }
       }
       if (wantsInquiry(text)) {
-        lead = {
-          name: "",
-          email: "",
-          service: serviceFromQuickQuestion(text),
-          message: ""
-        };
+        lead = { name: "", email: "", service: serviceFromQuickQuestion(text), message: "" };
         leadState = "name";
-        assistantReply(
-          "I'd be happy to help with your inquiry. Before we submit anything, I'll collect your details and ask you to confirm them. What is your name?"
-        );
+        assistantReply("I'd be happy to help with your inquiry. Before we submit anything, I'll collect your details and ask you to confirm them. What is your name?");
         return;
       }
       const history = conversation.slice(-MAX_HISTORY).map(item => ({
@@ -449,10 +473,7 @@
         throw new Error(data.details ? JSON.stringify(data.details) : JSON.stringify(data.error || data));
       }
       const reply = data.reply.trim();
-      conversation.push(
-        { role: "user", text },
-        { role: "assistant", text: reply }
-      );
+      conversation.push({ role: "user", text }, { role: "assistant", text: reply });
       if (conversation.length > MAX_HISTORY) {
         conversation.splice(0, conversation.length - MAX_HISTORY);
       }
@@ -467,14 +488,14 @@
     }
   }
 
-  send.addEventListener("click", submitMessage);
+  addSuggestedQuestions();
 
+  send.addEventListener("click", submitMessage);
   input.addEventListener("input", () => {
     if (input.value.trim()) {
       hideSuggestedQuestions();
     }
   });
-
   input.addEventListener("keydown", event => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -551,6 +572,7 @@
   };
 })();
 </script>
+
 
 </body>
 </html>
