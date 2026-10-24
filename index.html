@@ -300,97 +300,6 @@
     return "";
   }
 
-  function hideSuggestedQuestions() {
-    const panel = document.getElementById("voice-suggested-questions");
-
-    if (panel) panel.remove();
-  }
-
-  function isSuggestedQuestion(text) {
-    const normalized = text.toLowerCase().trim().replace(/[.!?]+$/, "");
-
-    return [
-      "i want to make an inquiry",
-      "i want a website for my business",
-      "i need seo services",
-      "i want to discuss a project"
-    ].includes(normalized);
-  }
-
-  function addSuggestedQuestions() {
-    const suggestions = [
-      {
-        label: "I want to make an inquiry",
-        message: "I want to make an inquiry"
-      },
-      {
-        label: "I want a website for my business",
-        message: "I want a website for my business"
-      },
-      {
-        label: "I need SEO services",
-        message: "I need SEO services"
-      },
-      {
-        label: "I want to discuss a project",
-        message: "I want to discuss a project"
-      }
-    ];
-
-    const panel = document.createElement("div");
-
-    panel.id = "voice-suggested-questions";
-    panel.setAttribute("aria-label", "Suggested questions");
-    panel.style.display = "flex";
-    panel.style.flexWrap = "wrap";
-    panel.style.gap = "8px";
-    panel.style.margin = "10px 0";
-    panel.style.width = "100%";
-
-    const heading = document.createElement("div");
-
-    heading.textContent = "Quick questions:";
-    heading.style.width = "100%";
-    heading.style.fontSize = "14px";
-    heading.style.marginBottom = "2px";
-
-    panel.appendChild(heading);
-
-    suggestions.forEach(item => {
-      const button = document.createElement("button");
-
-      button.type = "button";
-      button.textContent = item.label;
-      button.style.padding = "8px 12px";
-      button.style.border = "1px solid #cbd5e1";
-      button.style.borderRadius = "16px";
-      button.style.background = "#ffffff";
-      button.style.color = "#1f2937";
-      button.style.cursor = "pointer";
-      button.style.fontSize = "13px";
-      button.style.lineHeight = "1.35";
-
-      button.addEventListener("click", () => {
-        if (send.disabled || leadState || isRecognizing) return;
-
-        hideSuggestedQuestions();
-        input.value = item.message;
-
-        submitMessage();
-      });
-
-      panel.appendChild(button);
-    });
-
-    const inputContainer = input.parentElement;
-
-    if (inputContainer && inputContainer.parentElement) {
-      inputContainer.parentElement.insertBefore(panel, inputContainer);
-    } else if (messages.parentElement) {
-      messages.parentElement.insertBefore(panel, messages.nextSibling);
-    }
-  }
-
   async function submitLead() {
     status.textContent = "Submitting your inquiry...";
     send.disabled = true;
@@ -438,10 +347,6 @@
     const text = input.value.trim();
 
     if (!text || send.disabled || isRecognizing) return;
-
-    if (isSuggestedQuestion(text)) {
-      hideSuggestedQuestions();
-    }
 
     addMessage("You", text);
     input.value = "";
@@ -643,15 +548,8 @@
     }
   }
 
-  addSuggestedQuestions();
-
+  // Send button and Enter key
   send.addEventListener("click", submitMessage);
-
-  input.addEventListener("input", () => {
-    if (input.value.trim()) {
-      hideSuggestedQuestions();
-    }
-  });
 
   input.addEventListener("keydown", event => {
     if (event.key === "Enter") {
@@ -660,7 +558,7 @@
     }
   });
 
-  // Updated speech recognition handling starts here.
+  // Speech recognition
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -715,8 +613,6 @@
       isRecognizing = true;
       isStoppingRecognition = false;
       send.disabled = true;
-
-      hideSuggestedQuestions();
 
       status.textContent =
         "Starting microphone... Please allow microphone access if prompted.";
@@ -812,7 +708,6 @@
   };
 })();
 </script>
-
-  
+ 
 </body>
 </html>
