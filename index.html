@@ -278,9 +278,56 @@
     return /^(no|no thanks|cancel|cancel it|don't submit|do not submit|not yet)[.! ]*$/i.test(text.trim());
   }
 
-  function wantsInquiry(text) {
-    return /\b(make an inquiry|make an enquiry|submit an inquiry|submit an enquiry|send an inquiry|send an enquiry|request a quote|request a quotation|contact me|contact you|contact your team|hire you|hire your team|interested in your services|start an inquiry|start an enquiry|make an appointment|website for my business|need seo services|seo services|discuss a project|submit my details|contact the developer|contact the owner|send an inquiry form|send my inquiry|send my enquiry|i want to inquire|i would like to inquire|i'd like to inquire|i want to make an inquiry|i want to make an enquiry|i want to get in touch|i want to work with you)\b/i.test(text);
-  }
+function wantsInquiry(text) {
+  return /\b(
+    make an inquiry|
+    make an enquiry|
+    submit an inquiry|
+    submit an enquiry|
+    send an inquiry|
+    send an enquiry|
+    request a quote|
+    request a quotation|
+    contact me|
+    contact you|
+    contact your team|
+    hire you|
+    hire your team|
+    interested in your services|
+    start an inquiry|
+    start an enquiry|
+    make an appointment|
+    website for my business|
+    need a website|
+    need a developer|
+    need someone to maintain|
+    maintain my website|
+    maintaining my website|
+    website maintenance|
+    website maintenance services|
+    website support|
+    need seo services|
+    seo services|
+    discuss a project|
+    submit my details|
+    contact the developer|
+    contact the owner|
+    send an inquiry form|
+    send my inquiry|
+    send my enquiry|
+    i want to inquire|
+    i would like to inquire|
+    i'd like to inquire|
+    i want to make an inquiry|
+    i want to make an enquiry|
+    i want to get in touch|
+    i want to work with you|
+    i need help with my website|
+    i need help with seo|
+    i need automation|
+    i need a chatbot
+  )\b/ix.test(text);
+}
 
   function serviceFromMessage(text) {
     const value = text.toLowerCase();
