@@ -197,6 +197,7 @@
   </div>
 </div>
 <script>
+
 (() => {
   "use strict";
 
@@ -217,7 +218,6 @@
   const conversation = [];
   const MAX_HISTORY = 12;
 
-  // Lead details are kept locally until the visitor confirms.
   let leadState = null;
   let isRecognizing = false;
   let lead = {
@@ -275,15 +275,19 @@
 
   function serviceFromQuickQuestion(text) {
     const value = text.toLowerCase();
+
     if (value.includes("website for my business")) {
       return "Website development";
     }
+
     if (value.includes("seo services")) {
       return "SEO services";
     }
+
     if (value.includes("discuss a project")) {
       return "Project consultation";
     }
+
     return "";
   }
 
@@ -294,6 +298,7 @@
 
   function isSuggestedQuestion(text) {
     const normalized = text.toLowerCase().trim().replace(/[.!?]+$/, "");
+
     return [
       "i want to make an inquiry",
       "i want a website for my business",
@@ -338,16 +343,19 @@
       button.style.cursor = "pointer";
       button.style.fontSize = "13px";
       button.style.lineHeight = "1.35";
+
       button.addEventListener("click", () => {
         if (send.disabled || leadState) return;
         hideSuggestedQuestions();
         input.value = item.message;
         submitMessage();
       });
+
       panel.appendChild(button);
     });
 
     const inputContainer = input.parentElement;
+
     if (inputContainer && inputContainer.parentElement) {
       inputContainer.parentElement.insertBefore(panel, inputContainer);
     } else if (messages.parentElement) {
@@ -413,9 +421,10 @@
     status.textContent = "Thinking...";
 
     try {
-      const lower = text.toLowerCase().trim();
-
-      if (leadState && /^(cancel|cancel inquiry|cancel my inquiry|stop|start over)[.! ]*$/i.test(text)) {
+      if (
+        leadState &&
+        /^(cancel|cancel inquiry|cancel my inquiry|stop|start over)[.! ]*$/i.test(text)
+      ) {
         resetLead();
         assistantReply(
           "No problem. Your inquiry was cancelled and nothing was sent. You can continue asking me questions."
@@ -429,8 +438,10 @@
             assistantReply("Please enter your name using between 2 and 120 characters.");
             return;
           }
+
           lead.name = text;
           leadState = "email";
+
           assistantReply(
             "Thank you, " + lead.name + ". What is the best email address to reach you?"
           );
@@ -439,13 +450,16 @@
 
         if (leadState === "email") {
           const email = text.trim();
+
           if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             assistantReply(
               "That doesn't look like a valid email address. Please enter it again, or type cancel to stop."
             );
             return;
           }
+
           lead.email = email;
+
           if (lead.service) {
             leadState = "message";
             assistantReply(
@@ -457,12 +471,14 @@
               "Which service are you interested in? For example, SEO, website development, or AI and workflow automation."
             );
           }
+
           return;
         }
 
         if (leadState === "service") {
           lead.service = text;
           leadState = "message";
+
           assistantReply(
             "Please describe what you need help with. What is your main concern or project requirement?"
           );
@@ -472,6 +488,7 @@
         if (leadState === "message") {
           lead.message = text;
           leadState = "confirm";
+
           assistantReply(
             "Please review your inquiry:\n" +
             "Name: " + lead.name + "\n" +
@@ -488,6 +505,7 @@
             await submitLead();
             return;
           }
+
           if (isNo(text)) {
             resetLead();
             assistantReply(
@@ -495,6 +513,7 @@
             );
             return;
           }
+
           assistantReply(
             "Would you like me to submit the details shown above? Please say or type Yes to submit, No to cancel, or Cancel to stop the inquiry."
           );
@@ -509,7 +528,9 @@
           service: serviceFromQuickQuestion(text),
           message: ""
         };
+
         leadState = "name";
+
         assistantReply(
           "I'd be happy to help with your inquiry. Before we submit anything, I'll collect your details and ask you to confirm them. What is your name?"
         );
@@ -529,6 +550,7 @@
 
       const responseText = await response.text();
       let data;
+
       try {
         data = JSON.parse(responseText);
       } catch {
@@ -581,7 +603,8 @@
     }
   });
 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
     mic.disabled = true;
@@ -599,13 +622,30 @@
   let transcriptBeforeRecording = "";
 
   mic.addEventListener("click", () => {
-    if (send.disabled || isRecognizing) return;
+    // Click the microphone again to stop listening. This never sends the message.
+    if (isRecognizing) {
+      status.textContent = "Finishing speech recognition...";
+
+      try {
+        recognition.stop();
+      } catch (error) {
+        console.error("Could not stop speech recognition:", error);
+      }
+
+      return;
+    }
+
+    if (send.disabled) return;
+
     try {
       transcriptBeforeRecording = input.value.trim();
       hideSuggestedQuestions();
       isRecognizing = true;
       send.disabled = true;
-      status.textContent = "Listening... Speak now. Your message will not send automatically.";
+
+      status.textContent =
+        "Listening... Speak now. Click the microphone again when finished. Your message will not send automatically.";
+
       recognition.start();
     } catch (error) {
       isRecognizing = false;
@@ -617,7 +657,9 @@
 
   recognition.onresult = event => {
     const recognizedPart = Array.from(event.results)
-      .map(result => result[0] && result[0].transcript ? result[0].transcript : "")
+      .map(result =>
+        result[0] && result[0].transcript ? result[0].transcript : ""
+      )
       .join(" ")
       .replace(/\s+/g, " ")
       .trim();
@@ -631,24 +673,31 @@
     if (transcript) {
       input.value = transcript;
       hideSuggestedQuestions();
-      status.textContent = "Listening... Speak naturally; press Send when finished.";
+
+      status.textContent =
+        "Listening... Speak naturally. Click the microphone again when finished.";
     }
   };
 
   recognition.onerror = event => {
     console.error("Speech recognition error:", event.error);
+
     if (event.error !== "no-speech" || !input.value.trim()) {
-      status.textContent = "Microphone error: " + event.error + ". You can try again or type your message.";
+      status.textContent =
+        "Microphone error: " + event.error + ". You can try again or type your message.";
     }
   };
 
   recognition.onend = () => {
     isRecognizing = false;
     send.disabled = false;
+    mic.disabled = false;
+
     if (input.value.trim()) {
-      status.textContent = "Speech captured. Review the full text, then press Send. It has not been sent yet.";
+      status.textContent =
+        "Speech captured. Review the full text, then press Send. It has not been sent yet.";
     } else {
-      status.textContent = "Ready";
+      status.textContent = "Ready. You can type or use the microphone.";
     }
   };
 })();
