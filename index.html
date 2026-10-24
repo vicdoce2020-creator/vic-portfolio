@@ -279,21 +279,25 @@
   }
 
   function wantsInquiry(text) {
-    return /\b(make an inquiry|make a[n ]? enquiry|submit an inquiry|submit an enquiry|send an inquiry|send an enquiry|request a quote|request a quotation|contact me|contact you|contact your team|hire you|hire your team|interested in your services|start an inquiry|start an enquiry|make an appointment|website for my business|need seo services|seo services|discuss a project)\b/i.test(text);
+    return /\b(make an inquiry|make an enquiry|submit an inquiry|submit an enquiry|send an inquiry|send an enquiry|request a quote|request a quotation|contact me|contact you|contact your team|hire you|hire your team|interested in your services|start an inquiry|start an enquiry|make an appointment|website for my business|need seo services|seo services|discuss a project|submit my details|contact the developer|contact the owner|send an inquiry form|send my inquiry|send my enquiry|i want to inquire|i would like to inquire|i'd like to inquire|i want to make an inquiry|i want to make an enquiry|i want to get in touch|i want to work with you)\b/i.test(text);
   }
 
-  function serviceFromQuickQuestion(text) {
+  function serviceFromMessage(text) {
     const value = text.toLowerCase();
 
-    if (value.includes("website for my business")) {
-      return "Website development";
-    }
-
-    if (value.includes("seo services")) {
+    if (/\bseo\b/.test(value)) {
       return "SEO services";
     }
 
-    if (value.includes("discuss a project")) {
+    if (/\b(website|web development|web design|wordpress|website maintenance)\b/.test(value)) {
+      return "Website development";
+    }
+
+    if (/\b(ai|automation|workflow|chatbot|crm|n8n|zapier)\b/.test(value)) {
+      return "AI and workflow automation";
+    }
+
+    if (/\b(project|consultation|quote)\b/.test(value)) {
       return "Project consultation";
     }
 
@@ -356,6 +360,7 @@
     status.textContent = "Thinking...";
 
     try {
+      // Allow the visitor to cancel an inquiry at any time.
       if (
         leadState &&
         /^(cancel|cancel inquiry|cancel my inquiry|stop|start over)[.! ]*$/i.test(text)
@@ -363,12 +368,13 @@
         resetLead();
 
         assistantReply(
-          "No problem. Your inquiry was cancelled and nothing was sent. You can continue asking me questions."
+          "No problem. Your inquiry was cancelled and nothing was submitted. You can continue chatting with me."
         );
 
         return;
       }
 
+      // Process the inquiry information one step at a time.
       if (leadState) {
         if (leadState === "name") {
           if (text.length < 2 || text.length > 120) {
@@ -402,22 +408,11 @@
           }
 
           lead.email = email;
+          leadState = "service";
 
-          if (lead.service) {
-            leadState = "message";
-
-            assistantReply(
-              "Thanks. I have noted " +
-                lead.service +
-                " as the service you're interested in. Please describe what you need help with."
-            );
-          } else {
-            leadState = "service";
-
-            assistantReply(
-              "Which service are you interested in? For example, SEO, website development, or AI and workflow automation."
-            );
-          }
+          assistantReply(
+            "Thank you. Which service are you interested in? For example, SEO, website development, or AI and workflow automation."
+          );
 
           return;
         }
@@ -427,7 +422,7 @@
           leadState = "message";
 
           assistantReply(
-            "Please describe what you need help with. What is your main concern or project requirement?"
+            "What would you like help with? Please describe your concern, project, or requirements."
           );
 
           return;
@@ -438,12 +433,12 @@
           leadState = "confirm";
 
           assistantReply(
-            "Please review your inquiry:\n" +
+            "Please review your inquiry:\n\n" +
               "Name: " + lead.name + "\n" +
               "Email: " + lead.email + "\n" +
               "Service: " + lead.service + "\n" +
               "Concern: " + lead.message + "\n\n" +
-              "Would you like me to submit these details? Please say or type Yes to submit, or No to cancel. Nothing will be sent until you confirm."
+              "Would you like me to submit these details? Type or say Yes to submit, or No to cancel. Nothing will be sent until you confirm."
           );
 
           return;
@@ -459,37 +454,39 @@
             resetLead();
 
             assistantReply(
-              "No problem. Your inquiry was not submitted. You can continue chatting with me."
+              "Your inquiry was not submitted. You can continue chatting with me whenever you need help."
             );
 
             return;
           }
 
           assistantReply(
-            "Would you like me to submit the details shown above? Please say or type Yes to submit, No to cancel, or Cancel to stop the inquiry."
+            "Please type or say Yes to submit your inquiry, No to cancel it, or Cancel to stop the inquiry."
           );
 
           return;
         }
       }
 
+      // Start lead collection only when the visitor expresses inquiry intent.
       if (wantsInquiry(text)) {
         lead = {
           name: "",
           email: "",
-          service: serviceFromQuickQuestion(text),
+          service: serviceFromMessage(text),
           message: ""
         };
 
         leadState = "name";
 
         assistantReply(
-          "I'd be happy to help with your inquiry. Before we submit anything, I'll collect your details and ask you to confirm them. What is your name?"
+          "I'd be happy to help you with your inquiry! Before contacting the team, I'll collect your details and ask you to confirm them before anything is submitted. What is your name?"
         );
 
         return;
       }
 
+      // Regular AI chat remains available when the visitor is not making an inquiry.
       const history = conversation.slice(-MAX_HISTORY).map(item => ({
         role: item.role === "assistant" ? "model" : "user",
         content: item.text
@@ -660,7 +657,7 @@
       input.value = transcript;
 
       status.textContent =
-        "Speech detected. You can keep speaking or click the microphone to finish.";
+        "Speech detected. Review the text, then click Send when ready.";
     }
   };
 
@@ -708,6 +705,7 @@
   };
 })();
 </script>
+
  
 </body>
 </html>
