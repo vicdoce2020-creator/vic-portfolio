@@ -196,8 +196,9 @@
     </p>
   </div>
 </div>
-<script>
 
+
+<script>
 (() => {
   "use strict";
 
@@ -220,6 +221,8 @@
 
   let leadState = null;
   let isRecognizing = false;
+  let isStoppingRecognition = false;
+
   let lead = {
     name: "",
     email: "",
@@ -230,18 +233,23 @@
   function addMessage(who, text) {
     const p = document.createElement("p");
     const label = document.createElement("b");
+
     label.textContent = who + ": ";
     p.appendChild(label);
     p.appendChild(document.createTextNode(String(text)));
+
     messages.appendChild(p);
     messages.scrollTop = messages.scrollHeight;
   }
 
   function speak(text) {
     if (!("speechSynthesis" in window)) return;
+
     window.speechSynthesis.cancel();
+
     const utterance = new SpeechSynthesisUtterance(String(text));
     utterance.lang = "en-US";
+
     window.speechSynthesis.speak(utterance);
   }
 
@@ -253,6 +261,7 @@
 
   function resetLead() {
     leadState = null;
+
     lead = {
       name: "",
       email: "",
@@ -293,6 +302,7 @@
 
   function hideSuggestedQuestions() {
     const panel = document.getElementById("voice-suggested-questions");
+
     if (panel) panel.remove();
   }
 
@@ -309,13 +319,26 @@
 
   function addSuggestedQuestions() {
     const suggestions = [
-      { label: "I want to make an inquiry", message: "I want to make an inquiry" },
-      { label: "I want a website for my business", message: "I want a website for my business" },
-      { label: "I need SEO services", message: "I need SEO services" },
-      { label: "I want to discuss a project", message: "I want to discuss a project" }
+      {
+        label: "I want to make an inquiry",
+        message: "I want to make an inquiry"
+      },
+      {
+        label: "I want a website for my business",
+        message: "I want a website for my business"
+      },
+      {
+        label: "I need SEO services",
+        message: "I need SEO services"
+      },
+      {
+        label: "I want to discuss a project",
+        message: "I want to discuss a project"
+      }
     ];
 
     const panel = document.createElement("div");
+
     panel.id = "voice-suggested-questions";
     panel.setAttribute("aria-label", "Suggested questions");
     panel.style.display = "flex";
@@ -325,14 +348,17 @@
     panel.style.width = "100%";
 
     const heading = document.createElement("div");
+
     heading.textContent = "Quick questions:";
     heading.style.width = "100%";
     heading.style.fontSize = "14px";
     heading.style.marginBottom = "2px";
+
     panel.appendChild(heading);
 
     suggestions.forEach(item => {
       const button = document.createElement("button");
+
       button.type = "button";
       button.textContent = item.label;
       button.style.padding = "8px 12px";
@@ -345,9 +371,11 @@
       button.style.lineHeight = "1.35";
 
       button.addEventListener("click", () => {
-        if (send.disabled || leadState) return;
+        if (send.disabled || leadState || isRecognizing) return;
+
         hideSuggestedQuestions();
         input.value = item.message;
+
         submitMessage();
       });
 
@@ -371,7 +399,9 @@
     try {
       const response = await fetch(LEAD_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
           name: lead.name,
           email: lead.email,
@@ -426,16 +456,20 @@
         /^(cancel|cancel inquiry|cancel my inquiry|stop|start over)[.! ]*$/i.test(text)
       ) {
         resetLead();
+
         assistantReply(
           "No problem. Your inquiry was cancelled and nothing was sent. You can continue asking me questions."
         );
+
         return;
       }
 
       if (leadState) {
         if (leadState === "name") {
           if (text.length < 2 || text.length > 120) {
-            assistantReply("Please enter your name using between 2 and 120 characters.");
+            assistantReply(
+              "Please enter your name using between 2 and 120 characters."
+            );
             return;
           }
 
@@ -445,13 +479,17 @@
           assistantReply(
             "Thank you, " + lead.name + ". What is the best email address to reach you?"
           );
+
           return;
         }
 
         if (leadState === "email") {
           const email = text.trim();
 
-          if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          if (
+            email.length > 254 ||
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+          ) {
             assistantReply(
               "That doesn't look like a valid email address. Please enter it again, or type cancel to stop."
             );
@@ -462,11 +500,15 @@
 
           if (lead.service) {
             leadState = "message";
+
             assistantReply(
-              "Thanks. I have noted " + lead.service + " as the service you're interested in. Please describe what you need help with."
+              "Thanks. I have noted " +
+                lead.service +
+                " as the service you're interested in. Please describe what you need help with."
             );
           } else {
             leadState = "service";
+
             assistantReply(
               "Which service are you interested in? For example, SEO, website development, or AI and workflow automation."
             );
@@ -482,6 +524,7 @@
           assistantReply(
             "Please describe what you need help with. What is your main concern or project requirement?"
           );
+
           return;
         }
 
@@ -491,12 +534,13 @@
 
           assistantReply(
             "Please review your inquiry:\n" +
-            "Name: " + lead.name + "\n" +
-            "Email: " + lead.email + "\n" +
-            "Service: " + lead.service + "\n" +
-            "Concern: " + lead.message + "\n\n" +
-            "Would you like me to submit these details? Please say or type Yes to submit, or No to cancel. Nothing will be sent until you confirm."
+              "Name: " + lead.name + "\n" +
+              "Email: " + lead.email + "\n" +
+              "Service: " + lead.service + "\n" +
+              "Concern: " + lead.message + "\n\n" +
+              "Would you like me to submit these details? Please say or type Yes to submit, or No to cancel. Nothing will be sent until you confirm."
           );
+
           return;
         }
 
@@ -508,15 +552,18 @@
 
           if (isNo(text)) {
             resetLead();
+
             assistantReply(
               "No problem. Your inquiry was not submitted. You can continue chatting with me."
             );
+
             return;
           }
 
           assistantReply(
             "Would you like me to submit the details shown above? Please say or type Yes to submit, No to cancel, or Cancel to stop the inquiry."
           );
+
           return;
         }
       }
@@ -534,6 +581,7 @@
         assistantReply(
           "I'd be happy to help with your inquiry. Before we submit anything, I'll collect your details and ask you to confirm them. What is your name?"
         );
+
         return;
       }
 
@@ -544,8 +592,13 @@
 
       const response = await fetch(AI_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history })
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: text,
+          history
+        })
       });
 
       const responseText = await response.text();
@@ -559,7 +612,9 @@
 
       if (!response.ok || !data.reply || typeof data.reply !== "string") {
         throw new Error(
-          data.details ? JSON.stringify(data.details) : JSON.stringify(data.error || data)
+          data.details
+            ? JSON.stringify(data.details)
+            : JSON.stringify(data.error || data)
         );
       }
 
@@ -575,11 +630,13 @@
       }
 
       assistantReply(reply);
-
     } catch (error) {
       console.error("Chatbot error:", error);
       status.textContent = "Could not complete the request.";
-      assistantReply("Sorry, something went wrong. Please try again.");
+
+      assistantReply(
+        "Sorry, something went wrong. Please try again."
+      );
     } finally {
       send.disabled = false;
       mic.disabled = false;
@@ -603,33 +660,48 @@
     }
   });
 
+  // Updated speech recognition handling starts here.
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
     mic.disabled = true;
     mic.textContent = "Voice unavailable";
-    status.textContent = "Speech recognition is unsupported here. You can still type.";
+
+    status.textContent =
+      "Speech recognition is unsupported here. You can still type.";
+
     return;
   }
 
   const recognition = new SpeechRecognition();
+
   recognition.lang = "en-US";
-  recognition.continuous = true;
+  recognition.continuous = false;
   recognition.interimResults = true;
   recognition.maxAlternatives = 1;
 
   let transcriptBeforeRecording = "";
 
   mic.addEventListener("click", () => {
-    // Click the microphone again to stop listening. This never sends the message.
     if (isRecognizing) {
+      if (isStoppingRecognition) return;
+
+      isStoppingRecognition = true;
       status.textContent = "Finishing speech recognition...";
 
       try {
         recognition.stop();
       } catch (error) {
         console.error("Could not stop speech recognition:", error);
+
+        isRecognizing = false;
+        isStoppingRecognition = false;
+        send.disabled = false;
+        mic.disabled = false;
+
+        status.textContent =
+          "Could not stop listening. Please try again.";
       }
 
       return;
@@ -639,32 +711,50 @@
 
     try {
       transcriptBeforeRecording = input.value.trim();
-      hideSuggestedQuestions();
+
       isRecognizing = true;
+      isStoppingRecognition = false;
       send.disabled = true;
 
+      hideSuggestedQuestions();
+
       status.textContent =
-        "Listening... Speak now. Click the microphone again when finished. Your message will not send automatically.";
+        "Starting microphone... Please allow microphone access if prompted.";
 
       recognition.start();
     } catch (error) {
+      console.error("Could not start speech recognition:", error);
+
       isRecognizing = false;
+      isStoppingRecognition = false;
       send.disabled = false;
-      console.error("Speech recognition error:", error);
-      status.textContent = "Microphone is busy. Please try again.";
+      mic.disabled = false;
+
+      status.textContent =
+        "Could not start the microphone. Check browser permissions and try again.";
     }
   });
+
+  recognition.onstart = () => {
+    status.textContent =
+      "Listening... Speak now. Click the microphone again when finished. Your message will not send automatically.";
+  };
 
   recognition.onresult = event => {
     const recognizedPart = Array.from(event.results)
       .map(result =>
-        result[0] && result[0].transcript ? result[0].transcript : ""
+        result[0] && result[0].transcript
+          ? result[0].transcript
+          : ""
       )
       .join(" ")
       .replace(/\s+/g, " ")
       .trim();
 
-    const transcript = [transcriptBeforeRecording, recognizedPart]
+    const transcript = [
+      transcriptBeforeRecording,
+      recognizedPart
+    ]
       .filter(Boolean)
       .join(" ")
       .replace(/\s+/g, " ")
@@ -672,32 +762,52 @@
 
     if (transcript) {
       input.value = transcript;
-      hideSuggestedQuestions();
 
       status.textContent =
-        "Listening... Speak naturally. Click the microphone again when finished.";
+        "Speech detected. You can keep speaking or click the microphone to finish.";
     }
   };
 
   recognition.onerror = event => {
     console.error("Speech recognition error:", event.error);
 
-    if (event.error !== "no-speech" || !input.value.trim()) {
-      status.textContent =
-        "Microphone error: " + event.error + ". You can try again or type your message.";
-    }
+    const errorMessages = {
+      "not-allowed":
+        "Microphone access was denied. Allow microphone access in Chrome site settings.",
+      "service-not-allowed":
+        "The browser's speech recognition service is unavailable or blocked.",
+      "audio-capture":
+        "No working microphone was detected. Check your microphone connection.",
+      "network":
+        "The browser's speech recognition service encountered a network error.",
+      "no-speech":
+        "No speech was detected. Try speaking closer to your microphone.",
+      "language-not-supported":
+        "The selected speech-recognition language is not supported."
+    };
+
+    status.textContent =
+      errorMessages[event.error] ||
+      "Speech recognition failed: " + event.error + ". Please try again.";
+
+    isRecognizing = false;
+    isStoppingRecognition = false;
+    send.disabled = false;
+    mic.disabled = false;
   };
 
   recognition.onend = () => {
     isRecognizing = false;
+    isStoppingRecognition = false;
     send.disabled = false;
     mic.disabled = false;
 
     if (input.value.trim()) {
       status.textContent =
-        "Speech captured. Review the full text, then press Send. It has not been sent yet.";
+        "Speech captured. Review the text, then press Send. It has not been sent yet.";
     } else {
-      status.textContent = "Ready. You can type or use the microphone.";
+      status.textContent =
+        "Ready. No speech was captured. Try the microphone again or type your message.";
     }
   };
 })();
